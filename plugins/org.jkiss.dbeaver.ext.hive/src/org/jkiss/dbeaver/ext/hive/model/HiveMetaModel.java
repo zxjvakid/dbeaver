@@ -79,4 +79,27 @@ public class HiveMetaModel extends GenericMetaModel
         return getTableDDL(monitor, sourceObject, options);
     }
 
+    public String getProcedureDDL(DBRProgressMonitor monitor, GenericProcedure sourceObject) throws DBException {
+        GenericDataSource dataSource = sourceObject.getDataSource();
+        try (JDBCSession session = DBUtils.openMetaSession(monitor, sourceObject,
+                "Read Hive procedure source")) {
+            try (JDBCPreparedStatement dbStat = session.prepareStatement(
+                    "SHOW PROCEDURE " + sourceObject.getFullyQualifiedName(DBPEvaluationContext.DDL))) {
+                try (JDBCResultSet dbResult = dbStat.executeQuery()) {
+                    StringBuilder sql = new StringBuilder();
+                    while (dbResult.next()) {
+                        String line = dbResult.getString(1);
+                        if (line == null) {
+                            continue;
+                        }
+                        sql.append(line).append("\n");
+                    }
+                    String ddl = sql.toString();
+                    return ddl;
+                }
+            }
+        } catch (SQLException e) {
+            throw new DBException(e, dataSource);
+        }
+    }
 }
